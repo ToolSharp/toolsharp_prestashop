@@ -34,5 +34,6 @@ jobs:
         with:
           name: "${{ env.MODULE }} v${{ env.VERSION }}"
           body_path: ${{ github.workspace }}/modules/${{ env.MODULE }}/CHANGELOG.md
+          generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: dist/${{ env.MODULE }}-${{ env.VERSION }}.zip
