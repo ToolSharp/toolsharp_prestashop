@@ -1,0 +1,38 @@
+<?php
+
+global $_MODULE;
+$_MODULE = array();
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_fc14fbf06005d5f48a0c038cd52a9293'] = 'Códigos de desconto de produtos';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_cea32be2746b91d7177e592484c0ca17'] = 'Mostra códigos de descontos / vouchers válidos aplicáveis ao produto atual na página';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_29aa46cc3d2677c7e0f216910df600ff'] = 'Portes gratuitos';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_08e250ed5d94333a05e55dfa6482c4c4'] = 'Expira hoje';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_19fce05077afb56a8419e31659242109'] = 'Expira amanhã';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_f33979ea93f0216acebfabd3ffe181cd'] = 'Expira em %d dias';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_896c55cc5e46fab38ce9f51ebf7bfcd3'] = 'hora';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_73cdddd7730abfc13a55efb9f5685a3b'] = 'horas';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_0a7d55be9d12a369a6a8da0fb517fba4'] = 'minuto';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>toolsharp_productdiscounts_640fd0cc0ffa0316ae087652871f4486'] = 'minutos';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>getcontent-snippet_896c55cc5e46fab38ce9f51ebf7bfcd3'] = 'hora';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>getcontent-snippet_73cdddd7730abfc13a55efb9f5685a3b'] = 'horas';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>getcontent-snippet_0a7d55be9d12a369a6a8da0fb517fba4'] = 'minuto';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>getcontent-snippet_640fd0cc0ffa0316ae087652871f4486'] = 'minutos';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_8ae5105c9c3f12e495296f9b6dcecda7'] = 'ToolSharp - Códigos de desconto de produtos';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_be4c3eafbd84106d94ff8e4cbf5892cd'] = 'Verificação de atualizações falhou';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_ec3289a699d6b63829d553969f5b7a98'] = 'Um nova versão está disponível: v%s';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_4503fd87d05cca269a2a5cd5f113d0b6'] = 'Está a usar v%s';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_7d0ee6fed10d3d4e5c9ee496729ab519'] = 'Notas de lançamento';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_d6840b51a35e4155affe53174d3fc5a7'] = 'Ver lançamento no GitHub';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_38b005082e472f9fc0b1e9108fb52d4b'] = 'Está a usar a versão mais recente (v%s)';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_ef80349da19903f56fa7b97248025667'] = 'Resultado em cache. Última verificação: %s';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_0728751afdcc759e6402dd8f67f88e8e'] = 'Próxima verificação automática em %s';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_784506b93e26846166816d5a0660cae3'] = 'Verificar atualização agora';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>configuration_e1611ab64375268f18f26f65c9531122'] = 'Irá contactar o GitHub e atualizar o resultado em cache';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_43d3e0a33793e8515b7d185906221b79'] = 'Códigos de desconto disponíveis';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_ea6aeae53ad64380b6903b10705d0849'] = '1 código de desconto disponível';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_a50f921f2676c67a920ce6742569dea3'] = '%d códigos de desconto disponíveis';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_b391efbfa4378040d146d8f530961006'] = 'Copiar código %s';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_a43a93e2b7e71d1894fbc1aef78bec17'] = 'Clique para copiar';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_6d6db52799620de23c1e87d00abde8c4'] = 'Copiado!';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_bbdb13db09a6e1ad1e651c04aaad29f0'] = 'Valor do desconto';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_67f1e2cf62eb820c095a34341eee8a72'] = 'Poupe %s';
+$_MODULE['<{toolsharp_productdiscounts}prestashop>product_discounts_57dd74b859fb5ec2c167fcce7bc4d820'] = 'Min. valor de compra';

@@ -1,0 +1,226 @@
+/* ================================================================
+   Product Discounts Module – productdiscounts.css
+   Scoped under .pd-discounts to avoid conflicts with theme styles.
+   ================================================================ */
+
+/* ---- Container ---- */
+.pd-discounts {
+    margin: 1.25rem 0;
+    font-family: inherit;
+}
+
+/* ---- Header ---- */
+.pd-discounts__header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .75rem;
+}
+
+.pd-discounts__icon {
+    display: inline-flex;
+    color: #e63946;
+    flex-shrink: 0;
+}
+
+.pd-discounts__icon svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.pd-discounts__title {
+    font-size: .875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #333;
+    margin: 0;
+}
+
+/* ---- List reset ---- */
+.pd-discounts__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .625rem;
+}
+
+/* ---- Individual discount card ---- */
+.pd-discount {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto auto;
+    gap: .25rem .75rem;
+    align-items: start;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-left: 3px solid #e63946;
+    border-radius: 6px;
+    padding: .75rem 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    transition: box-shadow .15s ease;
+}
+
+.pd-discount:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+
+/* colour the left border by discount type */
+.pd-discount--percent  { border-left-color: #e63946; }
+.pd-discount--amount   { border-left-color: #2196f3; }
+.pd-discount--shipping { border-left-color: #4caf50; }
+
+/* ---- Code + copy button ---- */
+.pd-discount__code-wrap {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.pd-discount__code {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: #f5f5f5;
+    border: 1px dashed #bbb;
+    border-radius: 4px;
+    padding: .3rem .6rem;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: #222;
+    text-transform: uppercase;
+    transition: background .15s, border-color .15s;
+    position: relative;
+}
+
+.pd-discount__code:hover {
+    background: #eee;
+    border-color: #999;
+}
+
+.pd-discount__copy-icon svg {
+    width: .85rem;
+    height: .85rem;
+    opacity: .55;
+    transition: opacity .15s;
+}
+
+.pd-discount__code:hover .pd-discount__copy-icon svg {
+    opacity: 1;
+}
+
+/* Copied state */
+.pd-discount__copied-msg {
+    display: none;
+    font-family: inherit;
+    font-size: .75rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: #4caf50;
+    position: absolute;
+    right: .5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.pd-discount__code--copied .pd-discount__code-text,
+.pd-discount__code--copied .pd-discount__copy-icon {
+    visibility: hidden;
+}
+
+.pd-discount__code--copied .pd-discount__copied-msg {
+    display: inline;
+    visibility: visible;
+}
+
+/* ---- Value pill ---- */
+.pd-discount__value {
+    grid-column: 2;
+    grid-row: 1;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    font-size: .8rem;
+    font-weight: 700;
+    padding: .2rem .55rem;
+    border-radius: 20px;
+    background: #fde8ea;
+    color: #c0001a;
+    white-space: nowrap;
+}
+
+.pd-discount--amount .pd-discount__value {
+    background: #e3f0fd;
+    color: #0b5da3;
+}
+
+.pd-discount--shipping .pd-discount__value {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* ---- Description ---- */
+.pd-discount__desc {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    font-size: .8rem;
+    color: #555;
+    margin: .15rem 0 0;
+    line-height: 1.4;
+}
+
+/* ---- Meta row ---- */
+.pd-discount__meta {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .9rem;
+    margin-top: .35rem;
+}
+
+.pd-discount__min,
+.pd-discount__expiry {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: .75rem;
+    color: #777;
+}
+
+.pd-discount__min svg,
+.pd-discount__expiry svg {
+    width: .8rem;
+    height: .8rem;
+    flex-shrink: 0;
+}
+
+.pd-discount__expiry {
+    color: #b45309;
+}
+
+/* ---- Responsive tweaks ---- */
+@media (max-width: 576px) {
+    .pd-discount {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+
+    .pd-discount__code-wrap,
+    .pd-discount__value,
+    .pd-discount__desc,
+    .pd-discount__meta {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .pd-discount__value {
+        align-self: flex-start;
+        margin-top: .25rem;
+    }
+}
