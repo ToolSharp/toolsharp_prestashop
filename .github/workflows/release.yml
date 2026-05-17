@@ -1,0 +1,33 @@
+name: Release Module
+
+on:
+  push:
+    tags:
+      - '*@v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract module name and version
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "MODULE=toolsharp_${TAG%%@*}" >> $GITHUB_ENV
+          echo "VERSION=${TAG##*@v}" >> $GITHUB_ENV
+
+      - name: Build module
+        run: |
+          chmod +x scripts/build.sh
+          ./scripts/build.sh --version ${{ env.VERSION }} ${{ env.MODULE }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ env.MODULE }} v${{ env.VERSION }}"
+          body_path: ${{ github.workspace }}/modules/${{ env.MODULE }}/CHANGELOG.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: dist/${{ env.MODULE }}-${{ env.VERSION }}.zip
