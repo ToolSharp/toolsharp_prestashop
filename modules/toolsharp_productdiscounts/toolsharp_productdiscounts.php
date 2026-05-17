@@ -16,7 +16,7 @@ class Toolsharp_Productdiscounts extends Module
     {
         $this->name = 'toolsharp_productdiscounts';
         $this->tab = 'front_office_features';
-        $this->version = '0.0.1';
+        $this->version = trim(file_get_contents(__DIR__ . '/version.txt'));
         $this->author = 'ToolSharp';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -155,9 +155,7 @@ class Toolsharp_Productdiscounts extends Module
                 ON crs.id_cart_rule = cr.id_cart_rule
                AND crs.id_shop      = $idShop
         ";
-        $shopWhere = "
-            AND (cr.shop_restriction = 0 OR crs.id_shop IS NOT NULL)
-        ";
+        $shopWhere = "AND (cr.shop_restriction = 0 OR crs.id_shop IS NOT NULL)";
 
         // ---- Group restriction ----
         // cart_rule.group_restriction = 1 means the rule only works for certain groups.
@@ -166,9 +164,7 @@ class Toolsharp_Productdiscounts extends Module
                 ON crg.id_cart_rule = cr.id_cart_rule
                 AND crg.id_group     = $idGroup
         ";
-        $groupWhere = "
-            AND (cr.group_restriction = 0 OR crg.id_group IS NOT NULL)
-        ";
+        $groupWhere = "AND (cr.group_restriction = 0 OR crg.id_group IS NOT NULL)";
 
         // ================================================================
         // Query A: Rules with NO product restriction (apply to everything)
@@ -176,12 +172,9 @@ class Toolsharp_Productdiscounts extends Module
         $sqlAll = "
             SELECT DISTINCT cr.id_cart_rule
             FROM {$p}cart_rule cr
-            {$shopJoin}
-            {$groupJoin}
-            WHERE {$baseWhere}
-              AND cr.product_restriction = 0
-              {$shopWhere}
-              {$groupWhere}
+            {$shopJoin} {$groupJoin}
+            WHERE {$baseWhere} AND cr.product_restriction = 0
+              {$shopWhere} {$groupWhere}
         ";
 
         // ================================================================
@@ -190,20 +183,14 @@ class Toolsharp_Productdiscounts extends Module
         $sqlProduct = "
             SELECT DISTINCT cr.id_cart_rule
             FROM {$p}cart_rule cr
-            {$shopJoin}
-            {$groupJoin}
-            INNER JOIN {$p}cart_rule_product_rule_group crprg
-                ON crprg.id_cart_rule = cr.id_cart_rule
+            {$shopJoin} {$groupJoin}
+            INNER JOIN {$p}cart_rule_product_rule_group crprg ON crprg.id_cart_rule = cr.id_cart_rule
             INNER JOIN {$p}cart_rule_product_rule crpr
-                ON crpr.id_product_rule_group = crprg.id_product_rule_group
-               AND crpr.type = 'products'
+                ON crpr.id_product_rule_group = crprg.id_product_rule_group AND crpr.type = 'products'
             INNER JOIN {$p}cart_rule_product_rule_value crprv
-                ON crprv.id_product_rule = crpr.id_product_rule
-               AND crprv.id_item = $idProduct
-            WHERE {$baseWhere}
-              AND cr.product_restriction = 1
-              {$shopWhere}
-              {$groupWhere}
+                ON crprv.id_product_rule = crpr.id_product_rule AND crprv.id_item = $idProduct
+            WHERE {$baseWhere} AND cr.product_restriction = 1
+              {$shopWhere} {$groupWhere}
         ";
 
         // ================================================================
@@ -212,34 +199,19 @@ class Toolsharp_Productdiscounts extends Module
         $sqlCategory = "
             SELECT DISTINCT cr.id_cart_rule
             FROM {$p}cart_rule cr
-            {$shopJoin}
-            {$groupJoin}
-            INNER JOIN {$p}cart_rule_product_rule_group crprg
-                ON crprg.id_cart_rule = cr.id_cart_rule
+            {$shopJoin} {$groupJoin}
+            INNER JOIN {$p}cart_rule_product_rule_group crprg ON crprg.id_cart_rule = cr.id_cart_rule
             INNER JOIN {$p}cart_rule_product_rule crpr
-                ON crpr.id_product_rule_group = crprg.id_product_rule_group
-               AND crpr.type = 'categories'
+                ON crpr.id_product_rule_group = crprg.id_product_rule_group AND crpr.type = 'categories'
             INNER JOIN {$p}cart_rule_product_rule_value crprv
-                ON crprv.id_product_rule = crpr.id_product_rule
-               AND crprv.id_item IN ($categoriesIn)
-            WHERE {$baseWhere}
-              AND cr.product_restriction = 1
-              {$shopWhere}
-              {$groupWhere}
+                ON crprv.id_product_rule = crpr.id_product_rule AND crprv.id_item IN ($categoriesIn)
+            WHERE {$baseWhere} AND cr.product_restriction = 1
+              {$shopWhere} {$groupWhere}
         ";
-
         // ================================================================
         // Combine and fetch full rule data + language label
         // ================================================================
-        $idsSql = "
-            SELECT id_cart_rule FROM (
-                {$sqlAll}
-                UNION
-                {$sqlProduct}
-                UNION
-                {$sqlCategory}
-            ) AS combined_ids
-        ";
+        $idsSql = "SELECT id_cart_rule FROM ({$sqlAll} UNION {$sqlProduct} UNION {$sqlCategory}) AS combined_ids";
 
         $fullSql = "
             SELECT
@@ -256,8 +228,7 @@ class Toolsharp_Productdiscounts extends Module
                 cr.highlight
             FROM {$p}cart_rule cr
             LEFT JOIN {$p}cart_rule_lang crl
-                ON crl.id_cart_rule = cr.id_cart_rule
-               AND crl.id_lang = $idLang
+                ON crl.id_cart_rule = cr.id_cart_rule AND crl.id_lang = $idLang
             WHERE cr.id_cart_rule IN ($idsSql)
             ORDER BY cr.reduction_percent DESC, cr.reduction_amount DESC
         ";
@@ -308,12 +279,15 @@ class Toolsharp_Productdiscounts extends Module
             );
         }
 
-        // How long is the code valid?
         $expiresIn = '';
+        $expiryDate = '';
         if (!empty($row['date_to'])) {
             $dateTo = new DateTime($row['date_to']);
             $now = new DateTime();
             $diff = $now->diff($dateTo);
+
+            // Formatted date for the popup (e.g. "31/05/2026")
+            $expiryDate = $dateTo->format('d/m/Y');
 
             if ($diff->days === 0) {
                 $expiresIn = $this->l('Expires today');
@@ -325,13 +299,14 @@ class Toolsharp_Productdiscounts extends Module
         }
 
         return [
-            'id' => (int) $row['id_cart_rule'],
-            'code' => $row['code'],
-            'description' => $row['description'] ?? '',
-            'type' => $type,
-            'value' => $value,
-            'minimum_amount' => $minimumAmount,
-            'expires_in' => $expiresIn,
+            'id'            => (int) $row['id_cart_rule'],
+            'code'          => $row['code'],
+            'description'   => $row['description'] ?? '',
+            'type'          => $type,
+            'value'         => $value,
+            'minimum_amount'=> $minimumAmount,
+            'expires_in'    => $expiresIn,
+            'expiry_date'   => $expiryDate,   // full date for popup
             'free_shipping' => (int) $row['free_shipping'] === 1,
         ];
     }

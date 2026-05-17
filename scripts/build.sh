@@ -3,27 +3,30 @@
 # ToolSharp PrestaShop — build.sh
 #
 # Packages one or all modules into a clean zip ready for PrestaShop.
+# The version is read from <module>/version.txt unless --version is passed.
 #
 # Usage:
 #   ./scripts/build.sh                          # build all modules
 #   ./scripts/build.sh toolsharp_productdiscounts
 #   ./scripts/build.sh --version 1.2.0 toolsharp_productdiscounts
 #
-# Output: dist/<module_name>[-<version>].zip
+# Output: dist/<module_name>-<version>.zip
 # =============================================================================
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODULES_DIR="$REPO_ROOT/modules"
 DIST_DIR="$REPO_ROOT/dist"
-VERSION=""
+
+# VERSION may be overridden by --version; otherwise each module reads its own.
+FORCED_VERSION=""
 
 # ---- Parse arguments --------------------------------------------------------
 TARGET_MODULE=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --version|-v)
-            VERSION="$2"
+            FORCED_VERSION="$2"
             shift 2
             ;;
         -*)
@@ -44,7 +47,6 @@ warn() { echo "⚠ $*"; }
 err()  { echo "✖ $*" >&2; exit 1; }
 
 ensure_index_php() {
-    # Adds a PrestaShop security index.php to every directory that lacks one
     local dir="$1"
     find "$dir" -type d | while read -r d; do
         if [[ ! -f "$d/index.php" ]]; then
@@ -68,18 +70,28 @@ build_module() {
 
     [[ -d "$src_dir" ]] || err "Module directory not found: $src_dir"
 
-    local zip_name="$module_name"
-    [[ -n "$VERSION" ]] && zip_name="${module_name}-${VERSION}"
+    # ---- Resolve version ----------------------------------------------------
+    local version="$FORCED_VERSION"
+    if [[ -z "$version" ]]; then
+        local ver_file="$src_dir/version.txt"
+        if [[ -f "$ver_file" ]]; then
+            version="$(tr -d '[:space:]' < "$ver_file")"
+        fi
+    fi
+
+    if [[ -z "$version" ]]; then
+        err "No version found for $module_name. Add a version.txt or pass --version."
+    fi
+
+    local zip_name="${module_name}-${version}"
     local zip_path="$DIST_DIR/${zip_name}.zip"
 
-    log "Building $module_name..."
+    log "Building $module_name @ $version ..."
 
-    # Work in a temp directory so the zip contains the right folder structure
     local tmp_dir
     tmp_dir="$(mktemp -d)"
     trap "rm -rf '$tmp_dir'" EXIT
 
-    # Copy module source, excluding dev/system files
     rsync -a \
         --exclude='.git' \
         --exclude='.gitignore' \
@@ -88,12 +100,10 @@ build_module() {
         --exclude='node_modules' \
         "$src_dir/" "$tmp_dir/$module_name/"
 
-    # Ensure every directory has a security index.php
     ensure_index_php "$tmp_dir/$module_name"
 
     mkdir -p "$DIST_DIR"
 
-    # Build the zip from inside tmp so paths inside are module_name/...
     (cd "$tmp_dir" && zip -r "$zip_path" "$module_name" -x "*.DS_Store")
 
     ok "Built: $zip_path"

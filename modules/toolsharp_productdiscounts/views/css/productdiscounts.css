@@ -50,7 +50,7 @@
 /* ---- Individual discount card ---- */
 .pd-discount {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: auto auto auto;
     gap: .25rem .75rem;
     align-items: start;
@@ -67,7 +67,6 @@
     box-shadow: 0 2px 8px rgba(0,0,0,.1);
 }
 
-/* colour the left border by discount type */
 .pd-discount--percent  { border-left-color: #e63946; }
 .pd-discount--amount   { border-left-color: #2196f3; }
 .pd-discount--shipping { border-left-color: #4caf50; }
@@ -113,7 +112,6 @@
     opacity: 1;
 }
 
-/* Copied state */
 .pd-discount__copied-msg {
     display: none;
     font-family: inherit;
@@ -204,23 +202,198 @@
     color: #b45309;
 }
 
+/* ---- Info button ---- */
+.pd-discount__info-btn {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: .2rem;
+    cursor: pointer;
+    color: #aaa;
+    transition: color .15s;
+    line-height: 1;
+}
+
+.pd-discount__info-btn:hover,
+.pd-discount__info-btn:focus-visible {
+    color: #555;
+    outline: none;
+}
+
+.pd-discount__info-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* ================================================================
+   Modal overlay + panel
+   ================================================================ */
+.pd-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: pd-fade-in .15s ease;
+}
+
+.pd-modal-overlay[hidden] {
+    display: none;
+}
+
+@keyframes pd-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Prevent body scroll while modal is open */
+body.pd-modal-open {
+    overflow: hidden;
+}
+
+.pd-modal {
+    position: relative;
+    background: #fff;
+    border-radius: 10px;
+    padding: 2rem 1.75rem 1.75rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .2);
+    animation: pd-slide-up .18s ease;
+}
+
+@keyframes pd-slide-up {
+    from { transform: translateY(12px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ---- Close button ---- */
+.pd-modal__close {
+    position: absolute;
+    top: .875rem;
+    right: .875rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    padding: .25rem;
+    line-height: 1;
+    transition: color .15s;
+    display: inline-flex;
+}
+
+.pd-modal__close:hover,
+.pd-modal__close:focus-visible {
+    color: #333;
+    outline: none;
+}
+
+.pd-modal__close svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+/* ---- Hero value ---- */
+.pd-modal__hero {
+    text-align: center;
+    margin-bottom: 1.25rem;
+}
+
+.pd-modal__value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: #c0001a;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.pd-modal__value--amount   { color: #0b5da3; }
+.pd-modal__value--shipping { color: #2e7d32; }
+.pd-modal__value--none     { color: #333;    }
+
+/* ---- Code row ---- */
+.pd-modal__code-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+}
+
+/* Inherit the existing .pd-discount__code look, slightly larger */
+.pd-modal__code-btn {
+    font-size: 1rem;
+    padding: .45rem .9rem;
+    min-width: 140px;
+    justify-content: center;
+}
+
+/* ---- Divider ---- */
+.pd-modal__divider {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 0 0 1.1rem;
+}
+
+/* ---- Conditions ---- */
+.pd-modal__conditions-title {
+    font-size: .875rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 .6rem;
+}
+
+.pd-modal__conditions-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+}
+
+.pd-modal__conditions-list li {
+    font-size: .85rem;
+    color: #555;
+    line-height: 1.5;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.pd-modal__conditions-list li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: #aaa;
+    font-weight: 700;
+}
+
 /* ---- Responsive tweaks ---- */
 @media (max-width: 576px) {
     .pd-discount {
-        grid-template-columns: 1fr;
+        grid-template-columns: auto 1fr auto;
         grid-template-rows: auto;
     }
 
-    .pd-discount__code-wrap,
-    .pd-discount__value,
-    .pd-discount__desc,
-    .pd-discount__meta {
-        grid-column: 1;
-        grid-row: auto;
+    .pd-discount__code-wrap { grid-column: 1; grid-row: 1; }
+    .pd-discount__value     { grid-column: 2; grid-row: 1; }
+    .pd-discount__info-btn  { grid-column: 3; grid-row: 1; }
+    .pd-discount__desc      { grid-column: 1 / -1; grid-row: 2; }
+    .pd-discount__meta      { grid-column: 1 / -1; grid-row: 3; }
+
+    .pd-modal {
+        padding: 1.5rem 1.25rem 1.25rem;
     }
 
-    .pd-discount__value {
-        align-self: flex-start;
-        margin-top: .25rem;
+    .pd-modal__value {
+        font-size: 1.3rem;
     }
 }
