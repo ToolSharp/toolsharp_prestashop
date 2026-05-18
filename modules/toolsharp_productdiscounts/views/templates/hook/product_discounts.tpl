@@ -1,12 +1,20 @@
 {**
  * Product Discounts – product_discounts.tpl
- * Rendered by hookDisplayProductPriceBlock (after_price position)
+ * Rendered by hookDisplayProductAdditionalInfo (below add-to-cart button)
  *}
 
 {if $pd_discounts|count > 0}
     <link rel="stylesheet" href="{$pd_module_dir}views/css/productdiscounts.css">
 
-    <section class="pd-discounts" aria-label="{l s='Available discount codes' mod='toolsharp_productdiscounts'}">
+    {*
+     * pd_scale_factor is a CSS float (e.g. "0.90").
+     * zoom: X scales the entire block including its layout footprint.
+     * When scale is 1.00 (default) the inline style has no visual effect.
+     *}
+    <section
+        class="pd-discounts"
+        aria-label="{l s='Available discount codes' mod='toolsharp_productdiscounts'}"
+        style="zoom:{$pd_scale_factor|escape:'html':'UTF-8'}">
 
         <header class="pd-discounts__header">
             <span class="pd-discounts__icon" aria-hidden="true">
@@ -23,6 +31,21 @@
                     {l s='%d discount codes available' sprintf=[$pd_discounts|count] mod='toolsharp_productdiscounts'}
                 {/if}
             </h3>
+            {* Optional link to the merchant's promotion details page *}
+            {if $pd_promo_page_url}
+                <a href="{$pd_promo_page_url|escape:'html':'UTF-8'}"
+                   class="pd-discounts__promo-link"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    {l s='Promotion details' mod='toolsharp_productdiscounts'}
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                        aria-hidden="true" focusable="false">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                </a>
+            {/if}
         </header>
 
         <ul class="pd-discounts__list" role="list">
@@ -93,10 +116,9 @@
 
                     {* ---- Info button ---- *}
                     {*
-             * info_json is produced by json_encode() with JSON_HEX_TAG | JSON_HEX_QUOT |
-             * JSON_HEX_AMP | JSON_HEX_APOS, so every character is already HTML-attribute-safe.
-             * We use the nofilter modifier to prevent Smarty double-encoding the \uXXXX escapes.
-             *}
+                     * info_json is produced by json_encode() with JSON_HEX_* flags.
+                     * We use escape:'htmlall' to prevent Smarty double-encoding the \uXXXX escapes.
+                     *}
                     <button class="pd-discount__info-btn" type="button"
                         aria-label="{l s='More details' mod='toolsharp_productdiscounts'}"
                         title="{l s='More details' mod='toolsharp_productdiscounts'}"
@@ -117,8 +139,8 @@
     </section>
 
     {* =====================================================================
-   Detail modal — one shared instance, populated by JS on open
-   ===================================================================== *}
+       Detail modal — one shared instance, populated by JS on open
+       ===================================================================== *}
     <div class="pd-modal-overlay" id="pdDiscountModal" role="dialog" aria-modal="true"
         aria-label="{l s='Discount code details' mod='toolsharp_productdiscounts'}" hidden>
         <div class="pd-modal">
@@ -175,8 +197,8 @@
             'use strict';
 
             /* ----------------------------------------------------------------
-           Copy helper
-        ---------------------------------------------------------------- */
+               Copy helper
+            ---------------------------------------------------------------- */
             function copyToClipboard(code, btn) {
                 if (navigator.clipboard) {
                     navigator.clipboard.writeText(code).catch(function() {});
@@ -199,29 +221,59 @@
             });
 
             /* ----------------------------------------------------------------
-           Modal
-        ---------------------------------------------------------------- */
-            var overlay = document.getElementById('pdDiscountModal');
+               Modal
+            ---------------------------------------------------------------- */
+            var overlay    = document.getElementById('pdDiscountModal');
             var modalValue = document.getElementById('pdModalValue');
-            var modalDesc = document.getElementById('pdModalDesc');
-            var codeBtn = document.getElementById('pdModalCodeBtn');
-            var codeText = document.getElementById('pdModalCodeText');
-            var divider = document.getElementById('pdModalDivider');
+            var modalDesc  = document.getElementById('pdModalDesc');
+            var codeBtn    = document.getElementById('pdModalCodeBtn');
+            var codeText   = document.getElementById('pdModalCodeText');
+            var divider    = document.getElementById('pdModalDivider');
             var conditions = document.getElementById('pdModalConditions');
-            var condList = document.getElementById('pdModalConditionsList');
-            var closeBtn = overlay ? overlay.querySelector('.pd-modal__close') : null;
-            var lastFocus = null;
+            var condList   = document.getElementById('pdModalConditionsList');
+            var closeBtn   = overlay ? overlay.querySelector('.pd-modal__close') : null;
+            var lastFocus  = null;
+
+            /**
+             * Build one <li> for the conditions list.
+             *
+             * A condition is either:
+             *   string                               → plain text
+             *   { text: string, items: string[] }    → header text + nested <ul> of items
+             */
+            function buildConditionLi(condition) {
+                var li = document.createElement('li');
+
+                if (typeof condition === 'string') {
+                    li.textContent = condition;
+                } else if (condition && typeof condition === 'object') {
+                    li.textContent = condition.text || '';
+
+                    if (Array.isArray(condition.items) && condition.items.length > 0) {
+                        var subUl = document.createElement('ul');
+                        subUl.className = 'pd-modal__conditions-sublist';
+                        condition.items.forEach(function(itemText) {
+                            var subLi = document.createElement('li');
+                            subLi.textContent = itemText;
+                            subUl.appendChild(subLi);
+                        });
+                        li.appendChild(subUl);
+                    }
+                }
+
+                return li;
+            }
 
             function openModal(info) {
                 lastFocus = document.activeElement;
 
                 /* Hero */
                 modalValue.textContent = info.value || '';
-                modalValue.className = 'pd-modal__value pd-modal__value--' + (info.type || 'none');
+                modalValue.className   = 'pd-modal__value pd-modal__value--' + (info.type || 'none');
 
                 /* Code */
                 codeText.textContent = info.code || '';
-                codeBtn.dataset.code = info.code || '';
+                codeBtn.dataset.code  = info.code || '';
                 codeBtn.setAttribute('aria-label', 'Copy code ' + info.code);
 
                 /* Description (cart rule name) */
@@ -233,20 +285,18 @@
                     modalDesc.hidden = true;
                 }
 
-                /* Conditions list — built entirely in PHP, we just render here */
+                /* Conditions list */
                 condList.innerHTML = '';
                 var hasConditions = Array.isArray(info.conditions) && info.conditions.length > 0;
 
                 if (hasConditions) {
-                    info.conditions.forEach(function(text) {
-                        var li = document.createElement('li');
-                        li.textContent = text;
-                        condList.appendChild(li);
+                    info.conditions.forEach(function(condition) {
+                        condList.appendChild(buildConditionLi(condition));
                     });
                 }
 
                 /* Hide divider and conditions section when there's nothing to show */
-                divider.hidden = !hasConditions;
+                divider.hidden    = !hasConditions;
                 conditions.hidden = !hasConditions;
 
                 overlay.hidden = false;

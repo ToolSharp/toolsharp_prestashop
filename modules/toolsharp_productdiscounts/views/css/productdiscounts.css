@@ -7,6 +7,8 @@
 .pd-discounts {
     margin: 1.25rem 0;
     font-family: inherit;
+    /* zoom is applied via inline style (configured in BO).
+       No zoom property is set here so the BO value is authoritative. */
 }
 
 /* ---- Header ---- */
@@ -35,6 +37,33 @@
     letter-spacing: .06em;
     color: #333;
     margin: 0;
+}
+
+/* ---- Promotion details link (optional, shown when BO URL is configured) ---- */
+.pd-discounts__promo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    margin-left: auto;          /* push to the right of the header */
+    font-size: .75rem;
+    font-weight: 500;
+    color: #e63946;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: opacity .15s;
+}
+
+.pd-discounts__promo-link:hover,
+.pd-discounts__promo-link:focus-visible {
+    opacity: .75;
+    text-decoration: underline;
+    outline: none;
+}
+
+.pd-discounts__promo-link svg {
+    width: .75rem;
+    height: .75rem;
+    flex-shrink: 0;
 }
 
 /* ---- List reset ---- */
@@ -360,7 +389,7 @@ body.pd-modal-open {
     gap: .4rem;
 }
 
-.pd-modal__conditions-list li {
+.pd-modal__conditions-list > li {
     font-size: .85rem;
     color: #555;
     line-height: 1.5;
@@ -368,12 +397,34 @@ body.pd-modal-open {
     position: relative;
 }
 
-.pd-modal__conditions-list li::before {
+.pd-modal__conditions-list > li::before {
     content: '·';
     position: absolute;
     left: 0;
     color: #aaa;
     font-weight: 700;
+}
+
+/* ---- Nested sub-list (e.g. category / product names) ---- */
+.pd-modal__conditions-sublist {
+    list-style: disc;
+    margin: .35rem 0 0 1rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+}
+
+.pd-modal__conditions-sublist li {
+    font-size: .82rem;
+    color: #666;
+    line-height: 1.4;
+    padding-left: 0;   /* no inherited indent */
+}
+
+/* Sub-list items don't get the · pseudo-element */
+.pd-modal__conditions-sublist li::before {
+    display: none;
 }
 
 /* ---- Responsive tweaks ---- */
@@ -395,5 +446,10 @@ body.pd-modal-open {
 
     .pd-modal__value {
         font-size: 1.3rem;
+    }
+
+    .pd-discounts__promo-link span {
+        /* On very narrow screens, hide the label text and keep just the arrow */
+        display: none;
     }
 }

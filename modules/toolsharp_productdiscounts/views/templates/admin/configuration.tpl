@@ -1,11 +1,85 @@
 {**
  * ToolSharp — ProductDiscounts
- * Back office configuration page — update checker
+ * Back office configuration page — settings + update checker
  *}
 
+{* =====================================================================
+   Panel 1: Display settings
+   ===================================================================== *}
+<div class="panel">
+    <div class="panel-heading">
+        <i class="icon-sliders"></i>
+        {l s='Display settings' mod='toolsharp_productdiscounts'}
+    </div>
+
+    <div class="panel-body">
+        <form method="post" action="{$ts_form_action|escape:'html':'UTF-8'}">
+
+            {* ---- Block size ---- *}
+            <div class="form-group">
+                <label class="control-label col-lg-3" for="ts_scale">
+                    {l s='Block size' mod='toolsharp_productdiscounts'}
+                </label>
+                <div class="col-lg-9">
+                    <div style="display:flex;align-items:center;gap:1rem;max-width:420px;">
+                        <input
+                            type="range"
+                            id="ts_scale"
+                            name="ts_scale"
+                            min="75"
+                            max="100"
+                            step="1"
+                            value="{$ts_current_scale|intval}"
+                            oninput="document.getElementById('ts_scale_val').textContent = this.value + '%'"
+                            style="flex:1;"
+                        >
+                        <span id="ts_scale_val" style="min-width:3rem;font-weight:600;">
+                            {$ts_current_scale|intval}%
+                        </span>
+                    </div>
+                    <p class="help-block">
+                        {l s='Controls the overall size of the discount block on the product page (75 %% – 100 %%). Default: 100 %%.' mod='toolsharp_productdiscounts'}
+                    </p>
+                </div>
+            </div>
+
+            {* ---- Promotion details page URL ---- *}
+            <div class="form-group">
+                <label class="control-label col-lg-3" for="ts_promo_url">
+                    {l s='Promotion details page URL' mod='toolsharp_productdiscounts'}
+                </label>
+                <div class="col-lg-9">
+                    <input
+                        type="url"
+                        id="ts_promo_url"
+                        name="ts_promo_url"
+                        class="form-control"
+                        placeholder="https://your-shop.com/promotions"
+                        value="{$ts_current_promo_url|escape:'html':'UTF-8'}"
+                        style="max-width:480px;"
+                    >
+                    <p class="help-block">
+                        {l s='Optional. When set, a "Promotion details" link appears in the discount block on the product page, pointing customers to this URL. Leave blank to disable.' mod='toolsharp_productdiscounts'}
+                    </p>
+                </div>
+            </div>
+
+            <div class="panel-footer">
+                <button type="submit" name="ts_save_settings" class="btn btn-primary">
+                    <i class="icon-save"></i>
+                    {l s='Save settings' mod='toolsharp_productdiscounts'}
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+{* =====================================================================
+   Panel 2: Update checker (unchanged)
+   ===================================================================== *}
 <div class="panel">
 
-    {* ---- Header ---- *}
     <div class="panel-heading">
         <i class="icon-code-fork"></i>
         {l s='ToolSharp — Product Discount Codes' mod='toolsharp_productdiscounts'}
@@ -71,7 +145,6 @@
 
     </div>
 
-    {* ---- Footer: Check now button ---- *}
     <div class="panel-footer">
         <form method="post" action="{$ts_form_action|escape:'html':'UTF-8'}">
             <input type="hidden" name="ts_check_updates" value="1">

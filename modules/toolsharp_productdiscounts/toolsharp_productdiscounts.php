@@ -12,6 +12,13 @@ require_once __DIR__ . '/classes/UpdateChecker.php';
 
 class Toolsharp_Productdiscounts extends Module
 {
+    /** Stored as an integer 75–100 (percentage). Default: 100 = no scaling. */
+    const CONFIG_SCALE    = 'TOOLSHARP_PD_SCALE';
+    const CONFIG_SCALE_DEFAULT = 100;
+
+    /** Optional URL for the merchant's promotion-details page. Empty = disabled. */
+    const CONFIG_PROMO_URL = 'TOOLSHARP_PD_PROMO_URL';
+
     public function __construct()
     {
         $this->name = 'toolsharp_productdiscounts';
@@ -35,13 +42,25 @@ class Toolsharp_Productdiscounts extends Module
     public function install()
     {
         ToolsharpProductdiscountsUpdateChecker::clearCache();
+
+        // Seed defaults so the BO form is pre-filled on first open
+        Configuration::updateValue(self::CONFIG_SCALE, self::CONFIG_SCALE_DEFAULT);
+        Configuration::updateValue(self::CONFIG_PROMO_URL, '');
+
         return parent::install()
+            // NEW hook — renders the block below the add-to-cart button
+            && $this->registerHook('displayProductAdditionalInfo')
+            // Keep the old hook registered but returning '' so that shops
+            // which already had it registered see nothing there anymore.
             && $this->registerHook('displayProductPriceBlock');
     }
 
     public function uninstall()
     {
         ToolsharpProductdiscountsUpdateChecker::clearCache();
+        Configuration::deleteByName(self::CONFIG_SCALE);
+        Configuration::deleteByName(self::CONFIG_PROMO_URL);
+
         return parent::uninstall();
     }
 
@@ -49,13 +68,32 @@ class Toolsharp_Productdiscounts extends Module
     /* Hooks                                                                */
     /* ------------------------------------------------------------------ */
 
-    public function hookDisplayProductPriceBlock(array $params): string
+    /**
+     * Primary hook — fires below the add-to-cart button area.
+     * Most PS8 themes call this without passing a $product param, so we fall
+     * back to reading id_product from the request.
+     */
+    public function hookDisplayProductAdditionalInfo(array $params): string
     {
-        if (!isset($params['type']) || $params['type'] !== 'after_price') {
-            return '';
+        $product = $params['product'] ?? null;
+
+        if (empty($product)) {
+            $idProduct = (int) Tools::getValue('id_product');
+            if ($idProduct > 0) {
+                $product = ['id_product' => $idProduct];
+            }
         }
 
-        return $this->renderDiscountCard($params);
+        return $this->renderDiscountCard(['product' => $product]);
+    }
+
+    /**
+     * Legacy hook — still registered so existing shops that had it don't
+     * throw an error, but we intentionally render nothing here now.
+     */
+    public function hookDisplayProductPriceBlock(array $params): string
+    {
+        return '';
     }
 
     /* ------------------------------------------------------------------ */
@@ -75,18 +113,29 @@ class Toolsharp_Productdiscounts extends Module
             return '';
         }
 
-        $idLang = (int) $this->context->language->id;
+        $idLang     = (int) $this->context->language->id;
         $idCurrency = (int) $this->context->currency->id;
-        $discounts = $this->getValidDiscountsForProduct($idProduct, $idLang, $idCurrency);
+        $discounts  = $this->getValidDiscountsForProduct($idProduct, $idLang, $idCurrency);
 
         if (empty($discounts)) {
             return '';
         }
 
+        // Scale: stored as integer 75-100; convert to a 2-decimal CSS float (e.g. 0.90)
+        $scaleInt = (int) Configuration::get(self::CONFIG_SCALE);
+        if ($scaleInt < 75 || $scaleInt > 100) {
+            $scaleInt = self::CONFIG_SCALE_DEFAULT;
+        }
+        $scaleFactor = number_format($scaleInt / 100, 2, '.', '');
+
+        $promoUrl = (string) Configuration::get(self::CONFIG_PROMO_URL);
+
         $this->context->smarty->assign([
-            'pd_discounts' => $discounts,
-            'pd_currency' => $this->context->currency,
-            'pd_module_dir' => $this->_path,
+            'pd_discounts'     => $discounts,
+            'pd_currency'      => $this->context->currency,
+            'pd_module_dir'    => $this->_path,
+            'pd_scale_factor'  => $scaleFactor,   // e.g. "0.90"
+            'pd_promo_page_url' => $promoUrl,
         ]);
 
         return $this->display(__FILE__, 'views/templates/hook/product_discounts.tpl');
@@ -98,15 +147,15 @@ class Toolsharp_Productdiscounts extends Module
 
     private function getValidDiscountsForProduct(int $idProduct, int $idLang, int $idCurrency): array
     {
-        $db = Db::getInstance();
+        $db  = Db::getInstance();
         $now = pSQL(date('Y-m-d H:i:s'));
-        $p = _DB_PREFIX_;
+        $p   = _DB_PREFIX_;
 
         $idGroup = (int) Group::getCurrent()->id;
 
         $rawCategories = Product::getProductCategories($idProduct);
-        $categories = array_map('intval', $rawCategories);
-        $categoriesIn = implode(',', $categories ?: [0]);
+        $categories    = array_map('intval', $rawCategories);
+        $categoriesIn  = implode(',', $categories ?: [0]);
 
         $baseWhere = "
             cr.active  = 1
@@ -115,7 +164,7 @@ class Toolsharp_Productdiscounts extends Module
             AND '$now'    <= cr.date_to
         ";
 
-        $idShop = (int) $this->context->shop->id;
+        $idShop   = (int) $this->context->shop->id;
         $shopJoin = "
             LEFT JOIN {$p}cart_rule_shop crs
                 ON crs.id_cart_rule = cr.id_cart_rule
@@ -211,7 +260,7 @@ class Toolsharp_Productdiscounts extends Module
     private function getProductRuleDetails(int $idCartRule, int $idLang): array
     {
         $db = Db::getInstance();
-        $p = _DB_PREFIX_;
+        $p  = _DB_PREFIX_;
 
         // Category names this rule is scoped to
         $categorySql = "
@@ -230,7 +279,7 @@ class Toolsharp_Productdiscounts extends Module
         ";
 
         $categoryRows = $db->executeS($categorySql);
-        $categories = array_column($categoryRows ?: [], 'name');
+        $categories   = array_column($categoryRows ?: [], 'name');
 
         // Just detect presence of product-level rules — we don't list every product name
         $productSql = "
@@ -247,7 +296,7 @@ class Toolsharp_Productdiscounts extends Module
         $productCount = (int) $db->getValue($productSql);
 
         return [
-            'categories' => $categories,
+            'categories'             => $categories,
             'has_product_restriction' => $productCount > 0,
         ];
     }
@@ -255,27 +304,27 @@ class Toolsharp_Productdiscounts extends Module
     /**
      * Formats a raw cart rule row into a display-friendly array.
      *
-     * The full conditions list is built here (in PHP) so that all strings go
-     * through $this->l() for translation, and the template/JS only has to
-     * render an already-prepared array.
+     * Conditions are structured as either a plain string or an object
+     * { text: string, items: string[] } so the modal JS can render nested
+     * lists for category / product scope conditions.
      */
     private function formatDiscount(array $row, int $idCurrency, int $idLang): array
     {
         /* ---- Discount type & headline value ---- */
-        $type = 'none';
+        $type  = 'none';
         $value = '';
 
         if ((float) $row['reduction_percent'] > 0) {
-            $type = 'percent';
+            $type  = 'percent';
             $value = (float) $row['reduction_percent'] . '%';
         } elseif ((float) $row['reduction_amount'] > 0) {
-            $type = 'amount';
+            $type  = 'amount';
             $value = Tools::displayPrice(
                 (float) $row['reduction_amount'],
                 new Currency($idCurrency)
             );
         } elseif ((int) $row['free_shipping'] === 1) {
-            $type = 'shipping';
+            $type  = 'shipping';
             $value = $this->l('Free shipping');
         }
 
@@ -289,12 +338,12 @@ class Toolsharp_Productdiscounts extends Module
         }
 
         /* ---- Expiry ---- */
-        $expiresIn = '';
+        $expiresIn  = '';
         $expiryDate = '';
         if (!empty($row['date_to'])) {
             $dateTo = new DateTime($row['date_to']);
-            $now = new DateTime();
-            $diff = $now->diff($dateTo);
+            $now    = new DateTime();
+            $diff   = $now->diff($dateTo);
 
             $expiryDate = $dateTo->format('d/m/Y');
 
@@ -308,6 +357,9 @@ class Toolsharp_Productdiscounts extends Module
         }
 
         /* ---- Build conditions list ---- */
+        // Each entry is either:
+        //   string                          → plain text condition
+        //   ['text' => string, 'items' => string[]]  → header + nested list
         $conditions = [];
 
         // 1. Category / product scope
@@ -315,14 +367,14 @@ class Toolsharp_Productdiscounts extends Module
             $details = $this->getProductRuleDetails((int) $row['id_cart_rule'], $idLang);
 
             if (!empty($details['categories'])) {
-                $conditions[] = sprintf(
-                    $this->l('Only valid for products in: %s.'),
-                    implode(', ', $details['categories'])
-                );
+                // Structured entry — JS will render categories as a nested <ul>
+                $conditions[] = [
+                    'text'  => $this->l('Only valid for products in:'),
+                    'items' => $details['categories'],
+                ];
             }
 
             if ($details['has_product_restriction']) {
-                // The shopper sees this product matched; tell them it's not store-wide.
                 $conditions[] = $this->l('Only valid for selected products.');
             }
         }
@@ -335,7 +387,7 @@ class Toolsharp_Productdiscounts extends Module
             );
         }
 
-        // 3. Free shipping (as a bonus, when it's not the primary discount type)
+        // 3. Free shipping (bonus, when it's not the primary discount type)
         if ((int) $row['free_shipping'] === 1 && $type !== 'shipping') {
             $conditions[] = $this->l('Includes free shipping.');
         }
@@ -361,26 +413,26 @@ class Toolsharp_Productdiscounts extends Module
         // (no extra Smarty escaping needed).
         $infoJson = json_encode(
             [
-                'code' => $row['code'],
-                'value' => $value,
-                'type' => $type,
+                'code'        => $row['code'],
+                'value'       => $value,
+                'type'        => $type,
                 'description' => $row['description'] ?? '',
-                'conditions' => $conditions,
+                'conditions'  => $conditions,
             ],
-            JSON_UNESCAPED_UNICODE
+            JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_APOS
         );
 
         return [
-            'id' => (int) $row['id_cart_rule'],
-            'code' => $row['code'],
-            'description' => $row['description'] ?? '',
-            'type' => $type,
-            'value' => $value,
+            'id'             => (int) $row['id_cart_rule'],
+            'code'           => $row['code'],
+            'description'    => $row['description'] ?? '',
+            'type'           => $type,
+            'value'          => $value,
             'minimum_amount' => $minimumAmount,
-            'expires_in' => $expiresIn,
-            'expiry_date' => $expiryDate,
-            'free_shipping' => (int) $row['free_shipping'] === 1,
-            'info_json' => $infoJson,
+            'expires_in'     => $expiresIn,
+            'expiry_date'    => $expiryDate,
+            'free_shipping'  => (int) $row['free_shipping'] === 1,
+            'info_json'      => $infoJson,
         ];
     }
 
@@ -390,35 +442,60 @@ class Toolsharp_Productdiscounts extends Module
 
     public function getContent(): string
     {
+        $output = '';
+
+        // ---- Handle settings form ----------------------------------------
+        if (Tools::isSubmit('ts_save_settings')) {
+            $scale = (int) Tools::getValue('ts_scale', self::CONFIG_SCALE_DEFAULT);
+            $scale = max(75, min(100, $scale));
+            Configuration::updateValue(self::CONFIG_SCALE, $scale);
+
+            $promoUrl = trim((string) Tools::getValue('ts_promo_url', ''));
+            if ($promoUrl !== '' && !Validate::isUrl($promoUrl)) {
+                $promoUrl = '';
+                $output .= $this->displayError($this->l('The promotion details URL is not valid and has been cleared.'));
+            }
+            Configuration::updateValue(self::CONFIG_PROMO_URL, $promoUrl);
+
+            $output .= $this->displayConfirmation($this->l('Settings saved.'));
+        }
+
+        // ---- Handle update-check form ------------------------------------
         $checker = new ToolsharpProductdiscountsUpdateChecker($this->version, $this->name);
+        $force   = Tools::isSubmit('ts_check_updates');
+        $update  = $checker->check($force);
 
-        $force = Tools::isSubmit('ts_check_updates');
-        $update = $checker->check($force);
-
-        $checkedAt = date('d M Y H:i', $update['checked_at']);
-
+        $checkedAt        = date('d M Y H:i', $update['checked_at']);
         $nextCheckSeconds = ToolsharpProductdiscountsUpdateChecker::CACHE_TTL
             - (time() - $update['checked_at']);
         $nextCheck = $this->formatDuration(max(0, $nextCheckSeconds));
 
+        // Current saved settings
+        $currentScale    = (int) Configuration::get(self::CONFIG_SCALE) ?: self::CONFIG_SCALE_DEFAULT;
+        $currentPromoUrl = (string) Configuration::get(self::CONFIG_PROMO_URL);
+
         $this->context->smarty->assign([
             'ts_installed_version' => $this->version,
-            'ts_update' => $update,
-            'ts_checked_at' => $checkedAt,
-            'ts_next_check' => $nextCheck,
-            'ts_form_action' => $this->context->link->getAdminLink('AdminModules', true, [], [
-                'configure' => $this->name,
-                'tab_module' => $this->tab,
+            'ts_update'            => $update,
+            'ts_checked_at'        => $checkedAt,
+            'ts_next_check'        => $nextCheck,
+            'ts_form_action'       => $this->context->link->getAdminLink('AdminModules', true, [], [
+                'configure'   => $this->name,
+                'tab_module'  => $this->tab,
                 'module_name' => $this->name,
             ]),
+            // Settings panel vars
+            'ts_current_scale'     => $currentScale,
+            'ts_current_promo_url' => $currentPromoUrl,
+            'ts_scale_default'     => self::CONFIG_SCALE_DEFAULT,
         ]);
 
-        return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
+        return $output . $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
     }
 
     private function formatDuration(int $seconds): string
     {
-        $hours = (int) floor($seconds / 3600);
+        $hours   = (int) floor($seconds / 3600);
         $minutes = (int) floor(($seconds % 3600) / 60);
 
         $parts = [];
