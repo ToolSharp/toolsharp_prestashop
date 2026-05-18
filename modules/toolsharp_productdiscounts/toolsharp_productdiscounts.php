@@ -36,7 +36,7 @@ class Toolsharp_Productdiscounts extends Module
     {
         ToolsharpProductdiscountsUpdateChecker::clearCache();
         return parent::install()
-            && $this->registerHook('displayProductPriceBlock');       // inside the price block
+            && $this->registerHook('displayProductPriceBlock');
     }
 
     public function uninstall()
@@ -49,17 +49,8 @@ class Toolsharp_Productdiscounts extends Module
     /* Hooks                                                                */
     /* ------------------------------------------------------------------ */
 
-
-    /**
-     * Displayed inside the price block.
-     * We only render here for the 'after_price' position so we don't
-     * duplicate output in every sub-position PrestaShop calls this hook.
-     *
-     * Remove this hook registration (and method) if you only want one location.
-     */
     public function hookDisplayProductPriceBlock(array $params): string
     {
-        // Only inject at the 'after_price' position to avoid duplication.
         if (!isset($params['type']) || $params['type'] !== 'after_price') {
             return '';
         }
@@ -71,12 +62,8 @@ class Toolsharp_Productdiscounts extends Module
     /* Core rendering logic                                                 */
     /* ------------------------------------------------------------------ */
 
-    /**
-     * Fetches discounts and assigns them to the Smarty template.
-     */
     private function renderDiscountCard(array $params): string
     {
-        // PrestaShop 8 passes the product as an array under 'product'
         $product = $params['product'] ?? null;
 
         if (empty($product)) {
@@ -109,36 +96,18 @@ class Toolsharp_Productdiscounts extends Module
     /* Data retrieval                                                       */
     /* ------------------------------------------------------------------ */
 
-    /**
-     * Returns all cart rules (voucher codes) that:
-     *   - Are active, not deleted, and have a public code
-     *   - Are currently within their validity dates
-     *   - Apply to this shop
-     *   - Apply to the current customer group (or have no group restriction)
-     *   - Apply to the current product (no product restriction, OR the product /
-     *     one of its categories is explicitly whitelisted)
-     *
-     * @param int $idProduct
-     * @param int $idLang
-     * @param int $idCurrency
-     * @return array
-     */
     private function getValidDiscountsForProduct(int $idProduct, int $idLang, int $idCurrency): array
     {
         $db = Db::getInstance();
         $now = pSQL(date('Y-m-d H:i:s'));
         $p = _DB_PREFIX_;
 
-        // ---- Customer group ----
         $idGroup = (int) Group::getCurrent()->id;
 
-        // ---- Product categories ----
         $rawCategories = Product::getProductCategories($idProduct);
         $categories = array_map('intval', $rawCategories);
         $categoriesIn = implode(',', $categories ?: [0]);
 
-        // ---- Base conditions shared by all sub-queries ----
-        // Note: ps_cart_rule has no `deleted` column — activity is controlled by `active` only.
         $baseWhere = "
             cr.active  = 1
             AND cr.code   != ''
@@ -146,9 +115,6 @@ class Toolsharp_Productdiscounts extends Module
             AND '$now'    <= cr.date_to
         ";
 
-        // ---- Shop restriction ----
-        // shop_restriction = 0 → applies to all shops.
-        // shop_restriction = 1 → only shops listed in ps_cart_rule_shop.
         $idShop = (int) $this->context->shop->id;
         $shopJoin = "
             LEFT JOIN {$p}cart_rule_shop crs
@@ -157,8 +123,6 @@ class Toolsharp_Productdiscounts extends Module
         ";
         $shopWhere = "AND (cr.shop_restriction = 0 OR crs.id_shop IS NOT NULL)";
 
-        // ---- Group restriction ----
-        // cart_rule.group_restriction = 1 means the rule only works for certain groups.
         $groupJoin = "
             LEFT JOIN {$p}cart_rule_group crg
                 ON crg.id_cart_rule = cr.id_cart_rule
@@ -166,9 +130,6 @@ class Toolsharp_Productdiscounts extends Module
         ";
         $groupWhere = "AND (cr.group_restriction = 0 OR crg.id_group IS NOT NULL)";
 
-        // ================================================================
-        // Query A: Rules with NO product restriction (apply to everything)
-        // ================================================================
         $sqlAll = "
             SELECT DISTINCT cr.id_cart_rule
             FROM {$p}cart_rule cr
@@ -177,9 +138,6 @@ class Toolsharp_Productdiscounts extends Module
               {$shopWhere} {$groupWhere}
         ";
 
-        // ================================================================
-        // Query B: Rules restricted to this specific PRODUCT
-        // ================================================================
         $sqlProduct = "
             SELECT DISTINCT cr.id_cart_rule
             FROM {$p}cart_rule cr
@@ -193,9 +151,6 @@ class Toolsharp_Productdiscounts extends Module
               {$shopWhere} {$groupWhere}
         ";
 
-        // ================================================================
-        // Query C: Rules restricted to a CATEGORY that contains this product
-        // ================================================================
         $sqlCategory = "
             SELECT DISTINCT cr.id_cart_rule
             FROM {$p}cart_rule cr
@@ -208,16 +163,14 @@ class Toolsharp_Productdiscounts extends Module
             WHERE {$baseWhere} AND cr.product_restriction = 1
               {$shopWhere} {$groupWhere}
         ";
-        // ================================================================
-        // Combine and fetch full rule data + language label
-        // ================================================================
+
         $idsSql = "SELECT id_cart_rule FROM ({$sqlAll} UNION {$sqlProduct} UNION {$sqlCategory}) AS combined_ids";
 
         $fullSql = "
             SELECT
                 cr.id_cart_rule,
                 cr.code,
-                crl.name            AS description,
+                crl.name                AS description,
                 cr.reduction_percent,
                 cr.reduction_amount,
                 cr.free_shipping,
@@ -225,7 +178,10 @@ class Toolsharp_Productdiscounts extends Module
                 cr.minimum_amount,
                 cr.minimum_amount_tax,
                 cr.date_to,
-                cr.highlight
+                cr.highlight,
+                cr.product_restriction,
+                cr.cart_rule_restriction,
+                cr.id_customer
             FROM {$p}cart_rule cr
             LEFT JOIN {$p}cart_rule_lang crl
                 ON crl.id_cart_rule = cr.id_cart_rule AND crl.id_lang = $idLang
@@ -239,20 +195,73 @@ class Toolsharp_Productdiscounts extends Module
             return [];
         }
 
-        // ---- Format each row for the template ----
         $discounts = [];
         foreach ($rows as $row) {
-            $discounts[] = $this->formatDiscount($row, $idCurrency);
+            $discounts[] = $this->formatDiscount($row, $idCurrency, $idLang);
         }
 
         return $discounts;
     }
 
     /**
-     * Formats a raw cart rule DB row into a display-friendly array.
+     * Returns which categories / products a rule is explicitly restricted to.
+     *
+     * @return array{categories: string[], has_product_restriction: bool}
      */
-    private function formatDiscount(array $row, int $idCurrency): array
+    private function getProductRuleDetails(int $idCartRule, int $idLang): array
     {
+        $db = Db::getInstance();
+        $p = _DB_PREFIX_;
+
+        // Category names this rule is scoped to
+        $categorySql = "
+            SELECT DISTINCT cl.name
+            FROM {$p}cart_rule_product_rule_group crprg
+            INNER JOIN {$p}cart_rule_product_rule crpr
+                ON crpr.id_product_rule_group = crprg.id_product_rule_group
+               AND crpr.type = 'categories'
+            INNER JOIN {$p}cart_rule_product_rule_value crprv
+                ON crprv.id_product_rule = crpr.id_product_rule
+            INNER JOIN {$p}category_lang cl
+                ON cl.id_category = crprv.id_item
+               AND cl.id_lang = $idLang
+            WHERE crprg.id_cart_rule = $idCartRule
+            ORDER BY cl.name
+        ";
+
+        $categoryRows = $db->executeS($categorySql);
+        $categories = array_column($categoryRows ?: [], 'name');
+
+        // Just detect presence of product-level rules — we don't list every product name
+        $productSql = "
+            SELECT COUNT(DISTINCT crprv.id_item) AS cnt
+            FROM {$p}cart_rule_product_rule_group crprg
+            INNER JOIN {$p}cart_rule_product_rule crpr
+                ON crpr.id_product_rule_group = crprg.id_product_rule_group
+               AND crpr.type = 'products'
+            INNER JOIN {$p}cart_rule_product_rule_value crprv
+                ON crprv.id_product_rule = crpr.id_product_rule
+            WHERE crprg.id_cart_rule = $idCartRule
+        ";
+
+        $productCount = (int) $db->getValue($productSql);
+
+        return [
+            'categories' => $categories,
+            'has_product_restriction' => $productCount > 0,
+        ];
+    }
+
+    /**
+     * Formats a raw cart rule row into a display-friendly array.
+     *
+     * The full conditions list is built here (in PHP) so that all strings go
+     * through $this->l() for translation, and the template/JS only has to
+     * render an already-prepared array.
+     */
+    private function formatDiscount(array $row, int $idCurrency, int $idLang): array
+    {
+        /* ---- Discount type & headline value ---- */
         $type = 'none';
         $value = '';
 
@@ -261,7 +270,6 @@ class Toolsharp_Productdiscounts extends Module
             $value = (float) $row['reduction_percent'] . '%';
         } elseif ((float) $row['reduction_amount'] > 0) {
             $type = 'amount';
-            // Format using the currency symbol / position
             $value = Tools::displayPrice(
                 (float) $row['reduction_amount'],
                 new Currency($idCurrency)
@@ -271,6 +279,7 @@ class Toolsharp_Productdiscounts extends Module
             $value = $this->l('Free shipping');
         }
 
+        /* ---- Minimum spend ---- */
         $minimumAmount = '';
         if ((float) $row['minimum_amount'] > 0) {
             $minimumAmount = Tools::displayPrice(
@@ -279,6 +288,7 @@ class Toolsharp_Productdiscounts extends Module
             );
         }
 
+        /* ---- Expiry ---- */
         $expiresIn = '';
         $expiryDate = '';
         if (!empty($row['date_to'])) {
@@ -286,7 +296,6 @@ class Toolsharp_Productdiscounts extends Module
             $now = new DateTime();
             $diff = $now->diff($dateTo);
 
-            // Formatted date for the popup (e.g. "31/05/2026")
             $expiryDate = $dateTo->format('d/m/Y');
 
             if ($diff->days === 0) {
@@ -298,28 +307,94 @@ class Toolsharp_Productdiscounts extends Module
             }
         }
 
+        /* ---- Build conditions list ---- */
+        $conditions = [];
+
+        // 1. Category / product scope
+        if ((int) $row['product_restriction'] === 1) {
+            $details = $this->getProductRuleDetails((int) $row['id_cart_rule'], $idLang);
+
+            if (!empty($details['categories'])) {
+                $conditions[] = sprintf(
+                    $this->l('Only valid for products in: %s.'),
+                    implode(', ', $details['categories'])
+                );
+            }
+
+            if ($details['has_product_restriction']) {
+                // The shopper sees this product matched; tell them it's not store-wide.
+                $conditions[] = $this->l('Only valid for selected products.');
+            }
+        }
+
+        // 2. Minimum spend
+        if ($minimumAmount !== '') {
+            $conditions[] = sprintf(
+                $this->l('Requires a minimum purchase of %s.'),
+                $minimumAmount
+            );
+        }
+
+        // 3. Free shipping (as a bonus, when it's not the primary discount type)
+        if ((int) $row['free_shipping'] === 1 && $type !== 'shipping') {
+            $conditions[] = $this->l('Includes free shipping.');
+        }
+
+        // 4. Combinability.
+        //    cart_rule_restriction = 1 → cannot be combined with other rules.
+        //    BUT: if id_customer > 0 the voucher belongs to a specific customer — it
+        //    already implies restricted use, and surfacing the restriction is confusing
+        //    for a personalised code. So we only show this for public promotions.
+        if ((int) $row['cart_rule_restriction'] === 1 && (int) $row['id_customer'] === 0) {
+            $conditions[] = $this->l('Cannot be combined with other promotions.');
+        }
+
+        // 5. Expiry
+        if ($expiryDate !== '') {
+            $conditions[] = sprintf($this->l('Valid until %s.'), $expiryDate);
+        } elseif ($expiresIn !== '') {
+            $conditions[] = $expiresIn . '.';
+        }
+
+        /* ---- JSON blob for the info button ---- */
+        // JSON_HEX_* flags make every character safe inside an HTML attribute
+        // (no extra Smarty escaping needed).
+        $infoJson = json_encode(
+            [
+                'code' => $row['code'],
+                'value' => $value,
+                'type' => $type,
+                'description' => $row['description'] ?? '',
+                'conditions' => $conditions,
+            ],
+            JSON_UNESCAPED_UNICODE
+        );
+
         return [
-            'id'            => (int) $row['id_cart_rule'],
-            'code'          => $row['code'],
-            'description'   => $row['description'] ?? '',
-            'type'          => $type,
-            'value'         => $value,
-            'minimum_amount'=> $minimumAmount,
-            'expires_in'    => $expiresIn,
-            'expiry_date'   => $expiryDate,   // full date for popup
+            'id' => (int) $row['id_cart_rule'],
+            'code' => $row['code'],
+            'description' => $row['description'] ?? '',
+            'type' => $type,
+            'value' => $value,
+            'minimum_amount' => $minimumAmount,
+            'expires_in' => $expiresIn,
+            'expiry_date' => $expiryDate,
             'free_shipping' => (int) $row['free_shipping'] === 1,
+            'info_json' => $infoJson,
         ];
     }
+
+    /* ------------------------------------------------------------------ */
+    /* Back office                                                          */
+    /* ------------------------------------------------------------------ */
 
     public function getContent(): string
     {
         $checker = new ToolsharpProductdiscountsUpdateChecker($this->version, $this->name);
 
-        // "Check for updates now" button was clicked — bypass cache
         $force = Tools::isSubmit('ts_check_updates');
         $update = $checker->check($force);
 
-        // Format the "last checked" and "next check" strings for the template
         $checkedAt = date('d M Y H:i', $update['checked_at']);
 
         $nextCheckSeconds = ToolsharpProductdiscountsUpdateChecker::CACHE_TTL
@@ -341,10 +416,6 @@ class Toolsharp_Productdiscounts extends Module
         return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
     }
 
-    /**
-     * Converts a number of seconds into a human-readable string,
-     * e.g. "23 hours 4 minutes".
-     */
     private function formatDuration(int $seconds): string
     {
         $hours = (int) floor($seconds / 3600);
