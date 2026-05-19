@@ -145,49 +145,57 @@
         aria-label="{l s='Discount code details' mod='toolsharp_productdiscounts'}" hidden>
         <div class="pd-modal">
 
-            <button class="pd-modal__close" type="button" aria-label="{l s='Close' mod='toolsharp_productdiscounts'}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-            </button>
-
-            {* Hero: discount value *}
-            <div class="pd-modal__hero">
-                <p class="pd-modal__value" id="pdModalValue"></p>
-            </div>
-
-            {* Code + copy *}
-            <div class="pd-modal__code-row">
-                <button class="pd-discount__code pd-modal__code-btn" type="button" id="pdModalCodeBtn"
-                    title="{l s='Click to copy' mod='toolsharp_productdiscounts'}">
-                    <span class="pd-discount__code-text" id="pdModalCodeText"></span>
-                    <span class="pd-discount__copy-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                        </svg>
-                    </span>
-                    <span class="pd-discount__copied-msg" aria-live="polite">
-                        {l s='Copied!' mod='toolsharp_productdiscounts'}
-                    </span>
+            {* Close button sits OUTSIDE the scroll area so it's always reachable *}
+            <div class="pd-modal__close-row">
+                <button class="pd-modal__close" type="button" aria-label="{l s='Close' mod='toolsharp_productdiscounts'}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
                 </button>
             </div>
 
-            {* Optional name / description *}
-            <p class="pd-modal__desc" id="pdModalDesc"></p>
+            {* Scrollable body — all content below the close button *}
+            <div class="pd-modal__body">
 
-            <hr class="pd-modal__divider" id="pdModalDivider">
+                {* Hero: discount value *}
+                <div class="pd-modal__hero">
+                    <p class="pd-modal__value" id="pdModalValue"></p>
+                </div>
 
-            {* Conditions section — hidden when the list is empty *}
-            <div class="pd-modal__conditions" id="pdModalConditions">
-                <p class="pd-modal__conditions-title">
-                    {l s="Don't forget!" mod='toolsharp_productdiscounts'}
-                </p>
-                <ul class="pd-modal__conditions-list" id="pdModalConditionsList"></ul>
-            </div>
+                {* Code + copy *}
+                <div class="pd-modal__code-row">
+                    <button class="pd-discount__code pd-modal__code-btn" type="button" id="pdModalCodeBtn"
+                        title="{l s='Click to copy' mod='toolsharp_productdiscounts'}">
+                        <span class="pd-discount__code-text" id="pdModalCodeText"></span>
+                        <span class="pd-discount__copy-icon" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                            </svg>
+                        </span>
+                        <span class="pd-discount__copied-msg" aria-live="polite">
+                            {l s='Copied!' mod='toolsharp_productdiscounts'}
+                        </span>
+                    </button>
+                </div>
+
+                {* Optional name / description *}
+                <p class="pd-modal__desc" id="pdModalDesc"></p>
+
+                <hr class="pd-modal__divider" id="pdModalDivider">
+
+                {* Conditions section — hidden when the list is empty *}
+                <div class="pd-modal__conditions" id="pdModalConditions">
+                    <p class="pd-modal__conditions-title">
+                        {l s="Don't forget!" mod='toolsharp_productdiscounts'}
+                    </p>
+                    <ul class="pd-modal__conditions-list" id="pdModalConditionsList"></ul>
+                </div>
+
+            </div>{* /.pd-modal__body *}
 
         </div>
     </div>
